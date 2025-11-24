@@ -1,0 +1,17 @@
+{
+  "Host": "127.0.0.1",
+  "Port": 7250,
+  "UseHttps": false,
+  "_m":  "ToDo review ports",
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:3000",
+      "http://localhost:3001"
+    ]
+  },
+  "OpenHands": {
+    "BaseUrl": "http://localhost:3000",
+    "ApiPrefix": "/api",
+    "SocketUrl": "http://localhost:3000/socket.io/"
+  }
+}
