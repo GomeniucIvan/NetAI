@@ -1,0 +1,31 @@
+{
+  "BackendPorts": {
+    "NetAI.Api": {
+      "Host": "localhost",
+      "Port": 7247,
+      "UseHttps": false
+    },
+    "NetAI.RuntimeGateway": {
+      "Host": "localhost",
+      "Port": 7250,
+      "UseHttps": false
+    },
+    "NetAI.SandboxOrchestration": {
+      "Host": "localhost",
+      "Port": 7251,
+      "UseHttps": false
+    },
+    "NetAI.RuntimeServer": {
+      "Host": "localhost",
+      "Port": 3000,
+      "UseHttps": false
+    }
+  },
+  "ServiceUrls": {
+    "NetAI.Api": "http://localhost:7247",
+    "NetAI.RuntimeGateway": "http://localhost:7250",
+    "NetAI.SandboxOrchestration": "http://localhost:7251",
+    "NetAI.RuntimeServer": "http://localhost:3000",
+  }
+}
+
