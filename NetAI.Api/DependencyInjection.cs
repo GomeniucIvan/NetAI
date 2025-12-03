@@ -135,8 +135,10 @@ public static class DependencyInjection
             runtimeGatewayOptions.Bind(configuration.GetSection("Conversations:RuntimeGateway"));
         }
 
+        services.AddSingleton<IApplicationContext, ApplicationContext>();
+
         services.AddSingleton<IHttpClientSelector, HttpClientSelector>();
-        services.AddHttpClient(HttpClientSelector.RuntimeClientName, (sp, client) =>
+        services.AddHttpClient(HttpClientSelector.RuntimeApiClientName, (sp, client) =>
         {
             RuntimeConversationGatewayOptions options = sp
                 .GetRequiredService<IOptions<RuntimeConversationGatewayOptions>>().Value;
@@ -147,7 +149,40 @@ public static class DependencyInjection
                 client.BaseAddress = baseUri;
             }
         });
-        services.AddHttpClient(HttpClientSelector.ApiClientName);
+        services.AddHttpClient(HttpClientSelector.RuntimeServerClientName, (sp, client) =>
+        {
+            string baseUrl = sp.GetRequiredService<IApplicationContext>()
+                .AppConfiguration.RuntimeServer?.Url;
+
+            if (!string.IsNullOrWhiteSpace(baseUrl)
+                && Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
+            {
+                client.BaseAddress = baseUri;
+            }
+        });
+        services.AddHttpClient(HttpClientSelector.SandboxOrchestrationClientName, (sp, client) =>
+        {
+            string baseUrl = sp.GetRequiredService<IApplicationContext>()
+                .AppConfiguration.SandboxOrchestration?.Url;
+
+            if (!string.IsNullOrWhiteSpace(baseUrl)
+                && Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
+            {
+                client.BaseAddress = baseUri;
+            }
+        });
+        services.AddHttpClient(HttpClientSelector.ApiClientName, (sp, client) =>
+        {
+            string baseUrl = sp.GetRequiredService<IApplicationContext>()
+                .AppConfiguration.Api?.Url;
+
+            if (!string.IsNullOrWhiteSpace(baseUrl)
+                && Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
+            {
+                client.BaseAddress = baseUri;
+            }
+        });
+        services.AddScoped<IHttpServiceContextProvider, HttpServiceContextProvider>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddHttpClient(ConversationRepository.HttpClientName, (sp, client) =>
         {
@@ -184,8 +219,7 @@ public static class DependencyInjection
         services.AddScoped<IConversationWebhookService, ConversationWebhookService>();
         services.AddScoped<IEventCallbackDispatcher, SequentialEventCallbackDispatcher>();
         services.AddScoped<IEventCallbackManagementService, EventCallbackManagementService>();
-        services.AddSingleton<SystemStatusService>();
-        services.AddSingleton<IApplicationContext, ApplicationContext>();
+        services.AddScoped<SystemStatusService>();
         OptionsBuilder<DefaultSandboxSpecOptions> defaultSpecOptions = services.AddOptions<DefaultSandboxSpecOptions>();
         if (configuration is not null)
         {

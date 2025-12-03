@@ -19,6 +19,11 @@
       "Host": "localhost",
       "Port": 3000,
       "UseHttps": false
+    },
+    "OpenHands": {
+      "Host": "localhost",
+      "Port": 3000,
+      "UseHttps": false
     }
   },
   "ServiceUrls": {
@@ -26,6 +31,6 @@
     "NetAI.RuntimeGateway": "http://localhost:7250",
     "NetAI.SandboxOrchestration": "http://localhost:7251",
     "NetAI.RuntimeServer": "http://localhost:3000",
+    "OpenHands": "http://localhost:3000"
   }
 }
-

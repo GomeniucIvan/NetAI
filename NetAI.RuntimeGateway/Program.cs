@@ -70,22 +70,36 @@ builder.Services.Configure<OpenHandsOptions>(builder.Configuration.GetSection("O
 builder.Services.PostConfigure<OpenHandsOptions>(options =>
 {
     string configuredBase = builder.Configuration.GetValue<string>("ServiceUrls:NetAI.RuntimeServer");
-    if (string.IsNullOrWhiteSpace(configuredBase))
+    if (string.Equals(options.Provider, "netai", StringComparison.OrdinalIgnoreCase))
     {
-        string runtimeHost = builder.Configuration.GetValue<string>("BackendPorts:NetAI.RuntimeServer:Host") ?? "127.0.0.1";
-        int runtimePort = builder.Configuration.GetValue<int?>("BackendPorts:NetAI.RuntimeServer:Port") ?? 3000;
-        bool runtimeHttps = builder.Configuration.GetValue<bool?>("BackendPorts:NetAI.RuntimeServer:UseHttps") ?? false;
+        string runtimeHost = builder.Configuration.GetValue<string>("BackendPorts:NetAI.Server:Host") ?? "127.0.0.1";
+        int runtimePort = builder.Configuration.GetValue<int?>("BackendPorts:NetAI.Server:Port") ?? 7252;
+        bool runtimeHttps = builder.Configuration.GetValue<bool?>("BackendPorts:NetAI.Server:UseHttps") ?? false;
         configuredBase = $"{(runtimeHttps ? "https" : "http")}://{runtimeHost}:{runtimePort}";
+        if (string.IsNullOrWhiteSpace(options.ApiPrefix))
+        {
+            options.ApiPrefix = "/api/runtime";
+        }
+    }
+    else
+    {
+        if (string.IsNullOrWhiteSpace(configuredBase))
+        {
+            string runtimeHost = builder.Configuration.GetValue<string>("BackendPorts:NetAI.RuntimeServer:Host") ?? "127.0.0.1";
+            int runtimePort = builder.Configuration.GetValue<int?>("BackendPorts:NetAI.RuntimeServer:Port") ?? 3000;
+            bool runtimeHttps = builder.Configuration.GetValue<bool?>("BackendPorts:NetAI.RuntimeServer:UseHttps") ?? false;
+            configuredBase = $"{(runtimeHttps ? "https" : "http")}://{runtimeHost}:{runtimePort}";
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ApiPrefix))
+        {
+            options.ApiPrefix = "/api";
+        }
     }
 
     if (string.IsNullOrWhiteSpace(options.BaseUrl))
     {
         options.BaseUrl = configuredBase!;
-    }
-
-    if (string.IsNullOrWhiteSpace(options.ApiPrefix))
-    {
-        options.ApiPrefix = "/api";
     }
 
     Console.WriteLine($"[RuntimeGateway] OpenHands BaseUrl resolved to {options.BaseUrl} with ApiPrefix={options.ApiPrefix}");

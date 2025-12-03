@@ -6,6 +6,8 @@ public class OpenHandsOptions
 {
     public const string SectionName = "OpenHands";
 
+    public string Provider { get; set; } = "openhands";
+
     //[Required]
     [Url]
     public string ApiBaseUrl { get; set; }

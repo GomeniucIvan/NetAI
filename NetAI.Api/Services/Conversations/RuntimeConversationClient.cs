@@ -1,10 +1,12 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Net;
 using NetAI.Api.Data.Entities.Conversations;
 using NetAI.Api.Data.Entities.OpenHands;
 using NetAI.Api.Data.Repositories;
 using NetAI.Api.Models.Conversations;
+using NetAI.Extensions;
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using NetAI.Api.Services.Http;
 
 namespace NetAI.Api.Services.Conversations;
 
@@ -30,14 +32,18 @@ public sealed class RuntimeConversationClient : IRuntimeConversationClient
     private readonly IConversationRepository _repository;
     private readonly IRuntimeConversationGateway _runtimeGateway;
     private readonly ILogger<RuntimeConversationClient> _logger;
+    private readonly IHttpServiceContextProvider _httpContexts;
+
 
     public RuntimeConversationClient(
         IConversationRepository repository,
         IRuntimeConversationGateway runtimeGateway,
+        IHttpServiceContextProvider httpContexts,
         ILogger<RuntimeConversationClient> logger)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _runtimeGateway = runtimeGateway ?? throw new ArgumentNullException(nameof(runtimeGateway));
+        _httpContexts = httpContexts ?? throw new ArgumentNullException(nameof(httpContexts));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -652,11 +658,14 @@ public sealed class RuntimeConversationClient : IRuntimeConversationClient
         }
     }
 
-    private static string EnsureConversationUrl(ConversationMetadataRecord conversation)
+    private string EnsureConversationUrl(ConversationMetadataRecord conversation)
     {
-        if (!string.IsNullOrWhiteSpace(conversation.Url))
+        string host = _httpContexts.HttpContextServer.Host;
+        string fullUrl = HostExtensions.BuildFullUrl(host, conversation.Url);
+
+        if (!string.IsNullOrWhiteSpace(fullUrl))
         {
-            return conversation.Url!;
+            return fullUrl!;
         }
 
         if (!string.IsNullOrWhiteSpace(conversation.ConversationId))
@@ -796,6 +805,57 @@ public sealed class RuntimeConversationClient : IRuntimeConversationClient
                     : result.Error!;
 
                 return new RuntimeErrorObservation(error);
+            }
+            catch (RuntimeConversationGatewayException ex)
+            {
+                throw TranslateGatewayException(handle.Conversation.ConversationId, ex);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new ConversationRuntimeUnavailableException(handle.Conversation.ConversationId, ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new ConversationRuntimeUnavailableException(handle.Conversation.ConversationId, ex.Message);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new ConversationRuntimeUnavailableException(handle.Conversation.ConversationId, ex.Message);
+            }
+        }
+
+        if (action is RuntimeFileEditAction fileEdit)
+        {
+            string conversationUrl = EnsureConversationUrl(handle.Conversation);
+
+            try
+            {
+                RuntimeConversationFileEditResult result = await _runtimeGateway
+                    .ExecuteFileEditAsync(
+                        new RuntimeConversationFileEditRequest
+                        {
+                            ConversationUrl = conversationUrl,
+                            SessionApiKey = handle.Conversation.SessionApiKey,
+                            Action = fileEdit
+                        },
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!string.IsNullOrWhiteSpace(result.Error) || !string.IsNullOrWhiteSpace(result.ErrorCode))
+                {
+                    return new RuntimeErrorObservation(result.Error ?? "File edit failed")
+                    {
+                        Code = result.ErrorCode
+                    };
+                }
+
+                return new RuntimeFileEditObservation(
+                    result.Path ?? fileEdit.Path,
+                    result.Content,
+                    result.Diff,
+                    result.StartLine,
+                    result.EndLine,
+                    result.LintEnabled);
             }
             catch (RuntimeConversationGatewayException ex)
             {

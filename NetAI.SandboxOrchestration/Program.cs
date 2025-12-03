@@ -60,7 +60,7 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-builder.Services.AddHttpClient<IOpenHandsClient, OpenHandsClient>((serviceProvider, client) =>
+builder.Services.AddHttpClient<OpenHandsClient>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<OpenHandsOptions>>().Value;
     client.BaseAddress = new Uri(options.ApiBaseUrl, UriKind.Absolute);
@@ -75,6 +75,29 @@ builder.Services.AddHttpClient<IOpenHandsClient, OpenHandsClient>((serviceProvid
     {
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
+});
+
+builder.Services.AddHttpClient<NetAiRuntimeClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<OpenHandsOptions>>().Value;
+    var baseUrl = string.IsNullOrWhiteSpace(options.ApiBaseUrl) ? "http://127.0.0.1:7252" : options.ApiBaseUrl;
+    client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
+    client.Timeout = TimeSpan.FromSeconds(options.RequestTimeoutSeconds);
+    if (!client.DefaultRequestHeaders.Accept.Any())
+    {
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    }
+});
+
+builder.Services.AddScoped<IOpenHandsClient>(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<OpenHandsOptions>>().Value;
+    if (string.Equals(options.Provider, "netai", StringComparison.OrdinalIgnoreCase))
+    {
+        return sp.GetRequiredService<NetAiRuntimeClient>();
+    }
+
+    return sp.GetRequiredService<OpenHandsClient>();
 });
 
 builder.Services.AddScoped<SandboxLifecycleService>();

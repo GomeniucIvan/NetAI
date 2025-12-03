@@ -1,0 +1,13 @@
+﻿{
+  "profiles": {
+    "Repository": {
+      "launchBrowser": true,
+      "hotReloadEnabled": false,
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Port": "3000"
+      }
+    }
+  }
+}

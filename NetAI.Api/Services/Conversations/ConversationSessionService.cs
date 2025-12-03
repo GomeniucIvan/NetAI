@@ -18,6 +18,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using NetAI.Api.Services.Http;
 
 namespace NetAI.Api.Services.Conversations;
 
@@ -65,6 +66,7 @@ public class ConversationSessionService : IConversationSessionService
     private readonly IRuntimeConversationGateway _runtimeGateway;
     private readonly Uri _runtimeGatewayBaseUri;
     private readonly IApplicationContext _applicationContext;
+    private readonly IHttpServiceContextProvider _httpContexts;
 
     public ConversationSessionService(
         IConversationRepository repository,
@@ -72,14 +74,16 @@ public class ConversationSessionService : IConversationSessionService
         IRuntimeConversationClient runtimeClient,
         IRuntimeConversationGateway runtimeGateway,
         IOptions<RuntimeConversationGatewayOptions> runtimeGatewayOptions,
-        IApplicationContext applicationContext)
+        IApplicationContext applicationContext,
+        IHttpServiceContextProvider httpContexts)
     {
-        _repository = repository;
-        _logger = logger;
-        _runtimeClient = runtimeClient;
-        _runtimeGateway = runtimeGateway;
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _runtimeClient = runtimeClient ?? throw new ArgumentNullException(nameof(runtimeClient));
+        _runtimeGateway = runtimeGateway ?? throw new ArgumentNullException(nameof(runtimeGateway));
         _runtimeGatewayBaseUri = CreateRuntimeGatewayBaseUri(runtimeGatewayOptions?.Value);
-        _applicationContext = applicationContext;
+        _applicationContext = applicationContext ?? throw new ArgumentNullException(nameof(applicationContext));
+        _httpContexts = httpContexts ?? throw new ArgumentNullException(nameof(httpContexts));
     }
 
 
@@ -1025,7 +1029,8 @@ public class ConversationSessionService : IConversationSessionService
 
             if (uploadDescriptors.Count > 0)
             {
-                string conversationUrl = conversation.Url ?? $"/api/conversations/{conversation.ConversationId}";
+                HttpServiceContext serverContext = _httpContexts.HttpContextServer;
+                string conversationUrl = EnsureConversationUrl(conversation, serverContext.Host);
 
                 RuntimeConversationUploadResult result;
                 try
@@ -1443,19 +1448,17 @@ public class ConversationSessionService : IConversationSessionService
             includeDetails: true,
             cancellationToken);
 
-        string conversationUrl = conversation.Url ?? $"/api/conversations/{conversation.ConversationId}";
-
         try
         {
-            var appConfig = _applicationContext.AppConfiguration;
-
+            HttpServiceContext serverContext = _httpContexts.HttpContextServer;
+            string conversationUrl = EnsureConversationUrl(conversation, serverContext.Host);
             IReadOnlyList<RuntimeGitChangeResult> remoteChanges = await _runtimeGateway
                 .GetGitChangesAsync(
                     new RuntimeConversationGitChangesRequest
                     {
                         ConversationUrl = conversationUrl,
                         SessionApiKey = conversation.SessionApiKey,
-                        Host = appConfig.RuntimeServer?.Url
+                        Host = serverContext.Host
                     },
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -1519,11 +1522,12 @@ public class ConversationSessionService : IConversationSessionService
             includeDetails: true,
             cancellationToken);
 
-        string conversationUrl = conversation.Url ?? $"/api/conversations/{conversation.ConversationId}";
-
         RuntimeGitDiffResult diffResult;
         try
         {
+            HttpServiceContext serverContext = _httpContexts.HttpContextServer;
+            string conversationUrl = EnsureConversationUrl(conversation, serverContext.Host);
+
             diffResult = await _runtimeGateway
                 .GetGitDiffAsync(
                     new RuntimeConversationGitDiffRequest
@@ -1840,15 +1844,15 @@ public class ConversationSessionService : IConversationSessionService
     {
         try
         {
-            var appConfig = _applicationContext.AppConfiguration;
+            HttpServiceContext serverContext = _httpContexts.HttpContextServer;
 
-            string conversationUrl = EnsureConversationUrl(conversation, appConfig.RuntimeServer?.Url);
+            string conversationUrl = EnsureConversationUrl(conversation, serverContext.Host);
             return await fetch(
                     new RuntimeConversationMetadataRequest
                     {
                         ConversationUrl = conversationUrl,
                         SessionApiKey = conversation.SessionApiKey,
-                        Host = appConfig.RuntimeServer?.Url
+                        Host = serverContext.Host
                     },
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -2276,9 +2280,14 @@ public class ConversationSessionService : IConversationSessionService
         return false;
     }
 
-    private static string EnsureConversationUrl(ConversationMetadataRecord conversation, string host)
+    private static string EnsureConversationUrl(ConversationMetadataRecord conversation, string? host)
     {
-        var fullUrl = HostExtensions.BuildFullUrl(host, conversation.Url);
+        string fullUrl = null;
+
+        if (!string.IsNullOrWhiteSpace(host))
+        {
+            fullUrl = HostExtensions.BuildFullUrl(host!, conversation.Url);
+        }
 
         if (!string.IsNullOrWhiteSpace(fullUrl))
         {

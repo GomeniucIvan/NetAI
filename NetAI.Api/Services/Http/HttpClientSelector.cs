@@ -3,13 +3,12 @@ using System.Net.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NetAI.Api.Services.Conversations;
+using NetAI.Http;
 
 namespace NetAI.Api.Services.Http;
 
-public interface IHttpClientSelector
+public interface IHttpClientSelector : IRuntimeHttpClientProvider
 {
-    HttpClient GetRuntimeClient();
-
     HttpClient GetApiClient();
 
     HttpClient GetExternalClient(string name, string baseUrl);
@@ -21,7 +20,9 @@ public interface IHttpClientSelector
 //todo change to shared http
 public class HttpClientSelector : IHttpClientSelector
 {
-    public const string RuntimeClientName = "RuntimeGateway";
+    public const string RuntimeApiClientName = "RuntimeGateway";
+    public const string RuntimeServerClientName = "RuntimeServer";
+    public const string SandboxOrchestrationClientName = "SandboxOrchestration";
     public const string ApiClientName = "PublicApi";
 
     private readonly IHttpClientFactory _clientFactory;
@@ -38,9 +39,19 @@ public class HttpClientSelector : IHttpClientSelector
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public HttpClient GetRuntimeClient()
+    public HttpClient GetRuntimeApiClient()
     {
-        return _clientFactory.CreateClient(RuntimeClientName);
+        return _clientFactory.CreateClient(RuntimeApiClientName);
+    }
+
+    public HttpClient GetRuntimeServerClient()
+    {
+        return _clientFactory.CreateClient(RuntimeServerClientName);
+    }
+
+    public HttpClient GetSandboxOrchestrationClient()
+    {
+        return _clientFactory.CreateClient(SandboxOrchestrationClientName);
     }
 
     public HttpClient GetApiClient()

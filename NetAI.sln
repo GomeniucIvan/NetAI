@@ -16,6 +16,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetAI.RuntimeGateway", "Net
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetAI.SandboxOrchestration", "NetAI.SandboxOrchestration\NetAI.SandboxOrchestration.csproj", "{59DC9071-B63E-C170-D065-A3835A54EEB9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetAI.RuntimeServer", "NetAI.RuntimeServer\NetAI.RuntimeServer.csproj", "{BDC0FEFD-AE91-F3EA-0DC7-AA5B03A25C7B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetAI.Server", "NetAI.Server\NetAI.Server.csproj", "{17D830AA-D6BD-9BD5-3D46-7A86C75249CB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +42,14 @@ Global
 		{59DC9071-B63E-C170-D065-A3835A54EEB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59DC9071-B63E-C170-D065-A3835A54EEB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{59DC9071-B63E-C170-D065-A3835A54EEB9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDC0FEFD-AE91-F3EA-0DC7-AA5B03A25C7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDC0FEFD-AE91-F3EA-0DC7-AA5B03A25C7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDC0FEFD-AE91-F3EA-0DC7-AA5B03A25C7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDC0FEFD-AE91-F3EA-0DC7-AA5B03A25C7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17D830AA-D6BD-9BD5-3D46-7A86C75249CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17D830AA-D6BD-9BD5-3D46-7A86C75249CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17D830AA-D6BD-9BD5-3D46-7A86C75249CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17D830AA-D6BD-9BD5-3D46-7A86C75249CB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -38,7 +38,7 @@ public class RuntimeConversationGateway : IRuntimeConversationGateway
         ArgumentNullException.ThrowIfNull(logger);
 
         _httpClientSelector = httpClientSelector ?? throw new ArgumentNullException(nameof(httpClientSelector));
-        _httpClient = httpClientSelector.GetRuntimeClient();
+        _httpClient = httpClientSelector.GetRuntimeApiClient();
         _options = options.Value;
         _logger = logger;
         ConfigureHttpClient();
@@ -874,6 +874,97 @@ public class RuntimeConversationGateway : IRuntimeConversationGateway
         };
     }
 
+    public async Task<RuntimeConversationFileEditResult> ExecuteFileEditAsync(
+        RuntimeConversationFileEditRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Action);
+
+        EnsureConfigured();
+
+        Uri endpoint = BuildEndpoint(request.ConversationUrl, "actions/file-edit");
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["path"] = request.Action.Path,
+            ["operation"] = NormalizeOperation(request.Action.Operation)
+        };
+
+        if (request.Action.StartLine.HasValue)
+        {
+            payload["start_line"] = request.Action.StartLine.Value;
+        }
+
+        if (request.Action.EndLine.HasValue)
+        {
+            payload["end_line"] = request.Action.EndLine.Value;
+        }
+
+        if (request.Action.Content is not null)
+        {
+            payload["content"] = request.Action.Content;
+        }
+
+        if (request.Action.LintEnabled.HasValue)
+        {
+            payload["lint_enabled"] = request.Action.LintEnabled.Value;
+        }
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload, SerializerOptions), Encoding.UTF8, "application/json")
+        };
+
+        AddSessionHeader(httpRequest, request.SessionApiKey);
+
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+
+        string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.BadRequest)
+        {
+            string message = string.IsNullOrWhiteSpace(body)
+                ? response.ReasonPhrase ?? "Runtime gateway request failed."
+                : body;
+            throw new RuntimeConversationGatewayException(response.StatusCode, message, body);
+        }
+
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return new RuntimeConversationFileEditResult
+            {
+                Error = "Runtime returned an empty response.",
+                ErrorCode = "runtime_empty_response"
+            };
+        }
+
+        try
+        {
+            RuntimeConversationFileEditResult? result = JsonSerializer
+                .Deserialize<RuntimeConversationFileEditResult>(body, SerializerOptions);
+
+            if (result is null)
+            {
+                throw new JsonException("File edit result was null");
+            }
+
+            return result;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse file-edit response: {Body}", body);
+            return new RuntimeConversationFileEditResult
+            {
+                Error = "Unable to parse runtime response.",
+                ErrorCode = "runtime_parse_error"
+            };
+        }
+    }
+
     public async Task<RuntimeConversationUploadResult> UploadFilesAsync(
         RuntimeConversationUploadRequest request,
         CancellationToken cancellationToken)
@@ -1447,6 +1538,19 @@ public class RuntimeConversationGateway : IRuntimeConversationGateway
 
         string query = string.Join("&", parameters);
         return string.IsNullOrEmpty(query) ? "events" : $"events?{query}";
+    }
+
+    private static string NormalizeOperation(RuntimeFileEditOperation operation)
+    {
+        return operation switch
+        {
+            RuntimeFileEditOperation.View => "view",
+            RuntimeFileEditOperation.Insert => "insert",
+            RuntimeFileEditOperation.Replace => "replace",
+            RuntimeFileEditOperation.Diff => "diff",
+            RuntimeFileEditOperation.ToggleLint => "toggle_lint",
+            _ => "view"
+        };
     }
 
     private static string TryExtractError(JsonElement element)

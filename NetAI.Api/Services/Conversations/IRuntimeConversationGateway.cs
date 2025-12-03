@@ -57,6 +57,10 @@ public interface IRuntimeConversationGateway
         RuntimeConversationZipRequest request,
         CancellationToken cancellationToken);
 
+    Task<RuntimeConversationFileEditResult> ExecuteFileEditAsync(
+        RuntimeConversationFileEditRequest request,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<RuntimeGitChangeResult>> GetGitChangesAsync(
         RuntimeConversationGitChangesRequest request,
         CancellationToken cancellationToken);

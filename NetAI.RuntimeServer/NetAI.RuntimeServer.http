@@ -1,0 +1,6 @@
+@NetAI.RuntimeServer_HostAddress = http://localhost:5216
+
+GET {{NetAI.RuntimeServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
